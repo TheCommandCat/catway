@@ -19,7 +19,7 @@
 
 Catway is a small native macOS workspace wheel built around a simple idea: show every active workspace in one place, point in a direction, and click. It keeps the speed and tiling behavior of yabai while replacing the slow native Mission Control gesture with a cursor-centered radial view.
 
-Catway is currently an early `0.1.0` release. Its packaging, rollback, tests, and config ownership are production-shaped; wider hardware and multi-display testing is still welcome before calling it `1.0`.
+Catway is currently an early `0.1.1` release. Its packaging, rollback, tests, and config ownership are production-shaped; wider hardware and multi-display testing is still welcome before calling it `1.0`.
 
 ## What it does
 
@@ -145,7 +145,7 @@ codesign --verify --deep --strict build/Catway.app
 Create a release archive:
 
 ```bash
-./scripts/package-release.sh 0.1.0
+./scripts/package-release.sh 0.1.1
 ```
 
 Local builds use ad-hoc signing. Public binary distribution still requires a Developer ID signature and Apple notarization.

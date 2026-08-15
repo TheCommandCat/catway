@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VERSION="0.1.0-test"
+VERSION="0.1.1-test"
 if "$ROOT/scripts/package-release.sh" '../outside' >/dev/null 2>&1; then
   printf 'release packager accepted an unsafe version\n' >&2
   exit 1

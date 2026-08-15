@@ -139,7 +139,7 @@ case "$command" in
     "$CATWAY_SHARE/scripts/manage-integrations.sh" uninstall
     ;;
   doctor) "$CATWAY_SHARE/scripts/doctor.sh" "${1:-}" ;;
-  version) printf 'Catway 0.1.0\n' ;;
+  version) printf 'Catway 0.1.1\n' ;;
   help|-h|--help) catway_usage ;;
   *) catway_usage >&2; exit 64 ;;
 esac
