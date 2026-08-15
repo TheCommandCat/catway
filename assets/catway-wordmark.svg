@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 240" role="img" aria-labelledby="title desc">
+  <title id="title">Catway</title>
+  <desc id="desc">The word Catway inside a lounging cat, with its curled tail forming the C.</desc>
+
+  <rect width="600" height="240" fill="#fff"/>
+
+  <!-- The curled tail is the capital C. -->
+  <path
+    d="M178 163c-31 23-88 23-117-12-27-33-18-83 18-104 27-16 63-12 82 9 10 12 3 28-11 28-8 0-14-6-22-7-21-4-42 8-47 29-6 24 12 47 36 51 16 3 30-2 43-12"
+    fill="none"
+    stroke="#000"
+    stroke-width="28"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- One soft lounging-cat silhouette. -->
+  <path
+    d="M149 166c1-64 52-105 132-105 53 0 94 15 124 42-2-26 6-53 25-72 20 11 33 33 35 58 16-18 37-28 59-27 7 27 1 53-13 74 14 10 21 27 15 44-5 15-18 23-37 23H216c-42 0-68-13-67-37Z"
+    fill="#000"
+  />
+
+  <!-- Exact negative-space word; the tail supplies the C. -->
+  <text
+    x="173"
+    y="169"
+    fill="#fff"
+    font-family="Arial Rounded MT Bold, SF Pro Rounded, ui-rounded, sans-serif"
+    font-size="82"
+    font-weight="800"
+    letter-spacing="-3"
+  >atway</text>
+
+  <!-- Calm face and front paw. -->
+  <path d="M469 139c10 7 20 7 30 0" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="516" cy="158" r="6" fill="#fff"/>
+  <path d="M511 170c-8 7-17 7-24 2" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M481 190h34" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+</svg>

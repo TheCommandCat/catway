@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SOURCE_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE_PATH" ]]; do
+  SOURCE_DIR="$(cd -P "$(dirname "$SOURCE_PATH")" >/dev/null 2>&1 && pwd)"
+  SOURCE_PATH="$(readlink "$SOURCE_PATH")"
+  [[ "$SOURCE_PATH" = /* ]] || SOURCE_PATH="$SOURCE_DIR/$SOURCE_PATH"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE_PATH")" >/dev/null 2>&1 && pwd)"
+# shellcheck source=lib/common.sh
+. "$SCRIPT_DIR/lib/common.sh"
+# shellcheck source=lib/workspaces.sh
+. "$SCRIPT_DIR/lib/workspaces.sh"
+
+catway_usage() {
+  cat <<'USAGE'
+Usage: catway <command> [arguments]
+
+  toggle                         Toggle the workspace wheel
+  dismiss                        Close the wheel without switching
+  daemon                         Prewarm the wheel in the background
+  settings                       Open Catway Settings
+  is-visible                     Exit 0 while the wheel is visible
+  workspace focus|move <label>   Focus a workspace or move the focused window
+  focus next|previous            Cycle through every active workspace
+  focus-key <label>              Focus an active workspace by its visible label
+  rotate-windows                 Move the focused window to the next tiled position
+  labels restore|snapshot        Restore or record native Space labels
+  sync-settings                  Apply settings to Catway integrations
+  install-integrations           Add removable include blocks to user configs
+  uninstall-integrations         Remove only Catway-managed include blocks
+  doctor [--summary]             Check dependencies, configuration, and runtime
+  version                        Print the Catway version
+USAGE
+}
+
+catway_toggle() {
+  local pid
+  if pid="$(catway_process_pid 2>/dev/null)"; then
+    kill -USR1 "$pid"
+  else
+    [[ -d "$CATWAY_APP" ]] || { printf 'Catway app not found at %s\n' "$CATWAY_APP" >&2; return 66; }
+    open -na "$CATWAY_APP" --args --wheel
+  fi
+}
+
+catway_dismiss() {
+  local pid
+  if pid="$(catway_process_pid 2>/dev/null)"; then
+    kill -USR2 "$pid"
+  fi
+}
+
+catway_daemon() {
+  local lock_dir acquired
+  if catway_process_pid >/dev/null 2>&1; then
+    return 0
+  fi
+  [[ -d "$CATWAY_APP" ]] || { printf 'Catway app not found at %s\n' "$CATWAY_APP" >&2; return 66; }
+
+  lock_dir="${CATWAY_TMPDIR%/}/catway-daemon.lock"
+  acquired=false
+  for _ in {1..40}; do
+    if mkdir "$lock_dir" 2>/dev/null; then
+      acquired=true
+      break
+    fi
+    sleep 0.025
+  done
+  [[ "$acquired" == true ]] || return 75
+  trap 'rmdir "$lock_dir" 2>/dev/null || true' RETURN
+
+  if catway_process_pid >/dev/null 2>&1; then
+    return 0
+  fi
+  open -n -g -j "$CATWAY_APP" --args --daemon
+  for _ in {1..40}; do
+    catway_process_pid >/dev/null 2>&1 && return 0
+    sleep 0.025
+  done
+  return 70
+}
+
+catway_stop() {
+  local pid
+  if pid="$(catway_process_pid 2>/dev/null)"; then
+    kill -TERM "$pid"
+    for _ in {1..40}; do
+      /bin/kill -0 "$pid" 2>/dev/null || return 0
+      sleep 0.025
+    done
+    printf 'Catway: daemon %s did not stop within one second.\n' "$pid" >&2
+    return 70
+  fi
+}
+
+command="${1:-help}"
+shift || true
+case "$command" in
+  toggle) catway_toggle ;;
+  dismiss) catway_dismiss ;;
+  daemon) catway_daemon ;;
+  stop) catway_stop ;;
+  settings) open -na "$CATWAY_APP" ;;
+  is-visible) [[ -f "$CATWAY_VISIBLE_MARKER" ]] ;;
+  workspace) catway_ensure_config; catway_workspace_action "${1:-}" "${2:-}" ;;
+  focus) catway_focus_relative "${1:-}" ;;
+  focus-key) catway_focus_key "${1:-}" ;;
+  rotate-windows) catway_rotate_window ;;
+  bar-sync)
+    if [[ "$(catway_setting sketchyBarIntegration true)" == "true" ]]; then
+      "$CATWAY_CONFIG_HOME/sketchybar/sync-spaces.sh"
+    fi
+    ;;
+  bar-clean)
+    if [[ -x "$CATWAY_CONFIG_HOME/sketchybar/remove-items.sh" ]]; then
+      "$CATWAY_CONFIG_HOME/sketchybar/remove-items.sh"
+    fi
+    ;;
+  labels)
+    catway_ensure_config
+    case "${1:-}" in
+      restore) catway_restore_labels ;;
+      snapshot) catway_snapshot_labels ;;
+      *) catway_usage >&2; exit 64 ;;
+    esac
+    ;;
+  sync-settings)
+    catway_ensure_config
+    "$CATWAY_SHARE/scripts/sync-settings.sh"
+    ;;
+  install-integrations)
+    catway_ensure_config
+    "$CATWAY_SHARE/scripts/manage-integrations.sh" install
+    ;;
+  uninstall-integrations)
+    "$CATWAY_SHARE/scripts/manage-integrations.sh" uninstall
+    ;;
+  doctor) "$CATWAY_SHARE/scripts/doctor.sh" "${1:-}" ;;
+  version) printf 'Catway 0.1.0\n' ;;
+  help|-h|--help) catway_usage ;;
+  *) catway_usage >&2; exit 64 ;;
+esac

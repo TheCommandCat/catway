@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: brew install jq
+      - name: Swift tests
+        run: swift test
+      - name: Shell syntax
+        run: find scripts integrations Tests -type f \( -name '*.sh' -o -name 'catway' \) -print0 | xargs -0 -n1 bash -n
+      - name: Shell integration tests
+        run: ./Tests/shell/integration.sh
+      - name: Installer lifecycle test
+        run: ./Tests/shell/install.sh
+      - name: Build app
+        run: ./scripts/build-app.sh
+      - name: Verify signature
+        run: codesign --verify --deep --strict --verbose=2 build/Catway.app
+      - name: Verify release archive
+        run: ./Tests/shell/release.sh

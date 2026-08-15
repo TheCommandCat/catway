@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+export CATWAY_SHOW_EMPTY="__SHOW_EMPTY__"
+
+if [ -r "__CATWAY_CONFIG_HOME__/sketchybar.local.sh" ]; then
+  . "__CATWAY_CONFIG_HOME__/sketchybar.local.sh"
+fi
+
+if [ "__SKETCHYBAR_ENABLED__" = "true" ]; then
+  sketchybar --add event catway_workspace_change >/dev/null 2>&1 || true
+  "__CATWAY_CLI__" bar-sync
+fi

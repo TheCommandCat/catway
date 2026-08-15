@@ -1,0 +1,230 @@
+local catway = {}
+local cli = "__CATWAY_CLI__"
+local home = os.getenv("HOME")
+local configHome = os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")
+local settingsPath = configHome .. "/catway/settings.json"
+local temporaryDirectory = os.getenv("TMPDIR") or "/tmp/"
+if temporaryDirectory:sub(-1) ~= "/" then
+  temporaryDirectory = temporaryDirectory .. "/"
+end
+local visibleMarker = temporaryDirectory .. "catway-visible"
+
+local defaults = {
+  fourFingerGestures = true,
+  horizontalWorkspaceSwipe = false,
+  doubleBacktick = true,
+  bareWorkspaceKeys = true,
+}
+local settings = defaults
+
+local function loadSettings()
+  local decoded = hs.json.read(settingsPath) or {}
+  settings = {}
+  for key, value in pairs(defaults) do
+    if decoded[key] == nil then
+      settings[key] = value
+    else
+      settings[key] = decoded[key]
+    end
+  end
+end
+
+local function run(arguments)
+  hs.task.new(cli, nil, arguments):start()
+end
+
+loadSettings()
+catway.settingsWatcher = hs.pathwatcher.new(settingsPath, loadSettings):start()
+run({ "daemon" })
+
+local gestureState = {
+  tracking = false,
+  fired = false,
+  startX = 0,
+  startY = 0,
+  startedAt = 0,
+  axis = nil,
+}
+
+local function resetGestureState()
+  gestureState.tracking = false
+  gestureState.fired = false
+  gestureState.axis = nil
+end
+
+local function activeTrackpadTouches(event)
+  local result = {}
+  for _, touch in ipairs(event:getTouches() or {}) do
+    if touch.touching and touch.type == "indirect" and touch.normalizedPosition then
+      table.insert(result, touch)
+    end
+  end
+  return result
+end
+
+local function averagePosition(touches)
+  local x, y = 0, 0
+  for _, touch in ipairs(touches) do
+    x = x + touch.normalizedPosition.x
+    y = y + touch.normalizedPosition.y
+  end
+  return x / #touches, y / #touches
+end
+
+catway.gestureTap = hs.eventtap.new({ hs.eventtap.event.types.gesture }, function(event)
+  if not settings.fourFingerGestures then
+    return false
+  end
+
+  local touches = activeTrackpadTouches(event)
+  local now = hs.timer.absoluteTime() / 1000000000
+  if #touches == 4 then
+    local x, y = averagePosition(touches)
+    if not gestureState.tracking or now - gestureState.startedAt > 1.5 then
+      gestureState.tracking = true
+      gestureState.fired = false
+      gestureState.startX = x
+      gestureState.startY = y
+      gestureState.startedAt = now
+      gestureState.axis = nil
+      return false
+    end
+
+    local dx = x - gestureState.startX
+    local dy = y - gestureState.startY
+    if not gestureState.axis and math.max(math.abs(dx), math.abs(dy)) > 0.035 then
+      if math.abs(dy) > math.abs(dx) * 1.35 then
+        gestureState.axis = "vertical"
+      elseif math.abs(dx) > math.abs(dy) * 1.35 then
+        gestureState.axis = "horizontal"
+      end
+    end
+
+    if gestureState.axis == "vertical"
+        and not gestureState.fired
+        and math.abs(dy) > 0.10
+        and math.abs(dy) > math.abs(dx) * 1.15 then
+      gestureState.fired = true
+      local wheelVisible = hs.fs.attributes(visibleMarker) ~= nil
+      if dy > 0 and not wheelVisible then
+        run({ "toggle" })
+      elseif dy < 0 and wheelVisible then
+        run({ "dismiss" })
+      end
+      return true
+    end
+
+    if settings.horizontalWorkspaceSwipe
+        and gestureState.axis == "horizontal"
+        and not gestureState.fired
+        and math.abs(dx) > 0.07
+        and math.abs(dx) > math.abs(dy) * 1.15 then
+      gestureState.fired = true
+      run({ "focus", dx < 0 and "next" or "previous" })
+      return true
+    end
+    return gestureState.axis == "vertical"
+  elseif gestureState.tracking then
+    local consumesGesture = gestureState.axis == "vertical"
+        or (gestureState.axis == "horizontal" and settings.horizontalWorkspaceSwipe)
+    if #touches == 0 then
+      resetGestureState()
+    end
+    return consumesGesture
+  end
+  return false
+end):start()
+
+local backtickPending = false
+local backtickTimer = nil
+local physicalBacktickKeyCode = 50
+local postingLiteralBacktick = false
+
+local function isBacktickEvent(event)
+  return event:getKeyCode() == physicalBacktickKeyCode
+end
+
+local function postLiteralBacktick()
+  postingLiteralBacktick = true
+  hs.eventtap.keyStrokes("`")
+  hs.timer.doAfter(0.01, function()
+    postingLiteralBacktick = false
+  end)
+end
+
+local function clearBacktickPending()
+  backtickPending = false
+  if backtickTimer then
+    backtickTimer:stop()
+    backtickTimer = nil
+  end
+end
+
+catway.backtickTap = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(event)
+  if postingLiteralBacktick then
+    return false
+  end
+  if not settings.doubleBacktick then
+    return false
+  end
+
+  if not isBacktickEvent(event) then
+    clearBacktickPending()
+    return false
+  end
+
+  local flags = event:getFlags()
+  if flags.cmd or flags.ctrl or flags.alt or flags.shift or flags.fn then
+    clearBacktickPending()
+    return false
+  end
+
+  if hs.fs.attributes(visibleMarker) then
+    clearBacktickPending()
+    run({ "toggle" })
+    return true
+  end
+
+  if backtickPending then
+    clearBacktickPending()
+    hs.eventtap.keyStroke({}, "delete", 0)
+    run({ "toggle" })
+    return true
+  end
+
+  backtickPending = true
+  backtickTimer = hs.timer.doAfter(0.26, function()
+    backtickPending = false
+    backtickTimer = nil
+  end)
+  postLiteralBacktick()
+  return true
+end):start()
+
+catway.wheelKeyTap = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(event)
+  if not hs.fs.attributes(visibleMarker) then
+    return false
+  end
+  local flags = event:getFlags()
+  if flags.cmd or flags.ctrl or flags.alt or flags.shift or flags.fn then
+    return false
+  end
+  if event:getKeyCode() == 53 then
+    run({ "dismiss" })
+    return true
+  end
+  if isBacktickEvent(event) then
+    return false
+  end
+  if not settings.bareWorkspaceKeys then
+    return false
+  end
+  local key = hs.keycodes.map[event:getKeyCode()]
+  if type(key) == "string" and key:match("^[%w]$") then
+    run({ "focus-key", key:upper() })
+    return true
+  end
+  return false
+end):start()
+
+_G.Catway = catway

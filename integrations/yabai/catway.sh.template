@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+
+CATWAY_CLI="__CATWAY_CLI__"
+YABAI="__YABAI__"
+
+"$YABAI" -m rule --remove catway_app >/dev/null 2>&1 || true
+"$YABAI" -m rule --add label=catway_app app='^Catway$' manage=off
+
+for signal in \
+  catway_space_changed \
+  catway_space_created \
+  catway_space_destroyed \
+  catway_window_created \
+  catway_window_destroyed \
+  catway_window_moved
+do
+  "$YABAI" -m signal --remove "$signal" >/dev/null 2>&1 || true
+done
+
+"$CATWAY_CLI" labels restore >/dev/null 2>&1 || true
+"$YABAI" -m signal --add label=catway_space_changed event=space_changed \
+  action="\"$CATWAY_CLI\" dismiss"
+"$YABAI" -m signal --add label=catway_space_created event=space_created \
+  action="\"$CATWAY_CLI\" bar-sync"
+"$YABAI" -m signal --add label=catway_space_destroyed event=space_destroyed \
+  action="\"$CATWAY_CLI\" bar-sync"
+"$YABAI" -m signal --add label=catway_window_created event=window_created \
+  action="\"$CATWAY_CLI\" bar-sync"
+"$YABAI" -m signal --add label=catway_window_destroyed event=window_destroyed \
+  action="\"$CATWAY_CLI\" bar-sync"
+"$YABAI" -m signal --add label=catway_window_moved event=window_moved \
+  action="\"$CATWAY_CLI\" bar-sync"

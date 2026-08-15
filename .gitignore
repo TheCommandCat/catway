@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+build/
+assets/concepts/
+.DS_Store
+*.xcuserstate
+*.swp
+*.tmp

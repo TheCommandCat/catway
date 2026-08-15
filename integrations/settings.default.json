@@ -1,0 +1,10 @@
+{
+  "bareWorkspaceKeys": true,
+  "disableNativeMissionControl": true,
+  "doubleBacktick": true,
+  "fourFingerGestures": true,
+  "hideEmptyWorkspaces": true,
+  "horizontalWorkspaceSwipe": false,
+  "keyboardShortcuts": true,
+  "sketchyBarIntegration": true
+}
