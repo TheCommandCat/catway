@@ -45,8 +45,13 @@ export CATWAY_TEST_LOG="$LOG"
 PID_PROBE_ROOT="$TEST_ROOT/pid-probe"
 PID_PROBE_APP="$PID_PROBE_ROOT/Catway.app"
 mkdir -p "$PID_PROBE_APP/Contents/MacOS" "$PID_PROBE_ROOT/runtime"
-cp /bin/sleep "$PID_PROBE_APP/Contents/MacOS/Catway"
-codesign --force --sign - "$PID_PROBE_APP/Contents/MacOS/Catway" >/dev/null 2>&1
+xcrun clang -x c -o "$PID_PROBE_APP/Contents/MacOS/Catway" - <<'PROBE'
+#include <unistd.h>
+int main(void) {
+  sleep(30);
+  return 0;
+}
+PROBE
 "$PID_PROBE_APP/Contents/MacOS/Catway" 30 &
 PID_PROBE_PID=$!
 printf '%s\n' "$PID_PROBE_PID" > "$PID_PROBE_ROOT/runtime/catway.pid"

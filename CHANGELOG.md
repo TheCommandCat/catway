@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 - 2026-08-15
+
+- Make the PID ownership probe portable across GitHub-hosted macOS runners.
+- Update GitHub Actions to the current Node 24-based checkout release.
+- Add a centered, search-friendly project title and description to the README.
+
 ## 0.1.0 - 2026-08-15
 
 - Native cursor-centered radial workspace overview.
