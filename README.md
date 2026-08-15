@@ -1,3 +1,10 @@
+<h1 align="center">🐈 Catway — A Native macOS Workspace Switcher for yabai</h1>
+
+<p align="center">
+  <strong>See every active workspace at once, point in a direction, and move.</strong><br>
+  ⚡ A fast, cursor-centered workspace wheel built in Swift for macOS.
+</p>
+
 <p align="center">
   <img src="assets/catway-banner.png" alt="Catway - Workspace control for lazy cats who still want to move fast." width="100%">
 </p>
